@@ -3,17 +3,17 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using Mapbox.Vector.Tile;
 using UnityEngine;
 using UnityEngine.Networking;
+using Vector2 = UnityEngine.Vector2;
+using Vector3 = UnityEngine.Vector3;
 
 public class CreateLine : MonoBehaviour
 {
     public string editoastUrl = "http://localhost:4000/";
-    public int? infraId = null;
-    public int? defaultZoom = null;
-    public int? defaultX = null; // TODO: actually iterate and get the right tiles
-    public int? defaultY = null;
+    public int infraId = 1;
 
     private List<LineRenderer> _lineRenderers = new();
 
@@ -24,18 +24,41 @@ public class CreateLine : MonoBehaviour
                 "{editoast_url}",
                 editoastUrl
             );
-        StartCoroutine(
-            FetchTile(tileUrl, defaultZoom ?? 10, defaultX ?? 511, defaultY ?? 349, infraId ?? 1)
-        );
+        for (var x = -10; x < 10; x++)
+        {
+            for (var y = -10; y < 10; y++)
+            {
+                var tileSize = 100f;
+                var origin = new Vector2(tileSize * x, tileSize * y);
+                StartCoroutine(
+                    FetchTile(
+                        tileUrl,
+                        10,
+                        511 + x,
+                        349 + y,
+                        infraId,
+                        origin,
+                        new(tileSize, tileSize)
+                    )
+                );
+            }
+        }
     }
 
-    IEnumerator FetchTile(string url, int zoom, int x, int y, int infra)
+    IEnumerator FetchTile(
+        string url,
+        int zoom,
+        int x,
+        int y,
+        int infra,
+        Vector2 tileOrigin,
+        Vector2 tileSize
+    )
     {
         string formattedUrl = url.Replace("{z}", zoom.ToString())
             .Replace("{x}", x.ToString())
             .Replace("{y}", y.ToString())
             .Replace("{infra}", infra.ToString());
-        Debug.Log("fetching data at " + formattedUrl);
 
         using (UnityWebRequest request = UnityWebRequest.Get(formattedUrl))
         {
@@ -44,7 +67,8 @@ public class CreateLine : MonoBehaviour
             if (request.result == UnityWebRequest.Result.Success)
             {
                 byte[] tileData = request.downloadHandler.data;
-                ParseTile(tileData);
+                if (tileData != null && tileData.Length > 0)
+                    ParseTile(tileData, tileOrigin, tileSize);
             }
             else
             {
@@ -53,7 +77,7 @@ public class CreateLine : MonoBehaviour
         }
     }
 
-    void ParseTile(byte[] tileData)
+    void ParseTile(byte[] tileData, Vector2 tileOrigin, Vector2 tileSize)
     {
         Stream stream = new MemoryStream(tileData);
         var layerInfos = VectorTileParser.Parse(stream);
@@ -64,21 +88,25 @@ public class CreateLine : MonoBehaviour
             var points = new List<Vector3>();
             foreach (var p in geometry)
             {
-                var mult = 1e-2f;
-                points.Add(new(p.X * mult, 0, p.Y * mult - 39));
+                points.Add(
+                    new(
+                        tileOrigin.x + p.X * tileSize.x / 4096f,
+                        0,
+                        tileOrigin.y + tileSize.y * (1 - p.Y / 4096f)
+                    )
+                );
             }
 
             var child = new GameObject();
             var lineRenderer = child.AddComponent<LineRenderer>();
             lineRenderer.positionCount = 2;
-            lineRenderer.startWidth = 0.01f;
-            lineRenderer.endWidth = 0.01f;
+            lineRenderer.startWidth = 0.02f;
+            lineRenderer.endWidth = 0.02f;
             lineRenderer.useWorldSpace = true;
             lineRenderer.positionCount = points.Count;
             lineRenderer.SetPositions(points.ToArray());
             Material whiteDiffuseMat = new Material(Shader.Find("Unlit/Texture"));
             lineRenderer.material = whiteDiffuseMat;
-            Debug.Log("New line: " + String.Join(", ", points.Select(p => p.ToString()).ToArray()));
             _lineRenderers.Add(lineRenderer);
         }
     }
