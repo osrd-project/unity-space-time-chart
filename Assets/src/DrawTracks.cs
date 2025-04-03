@@ -12,15 +12,15 @@ using Vector3 = UnityEngine.Vector3;
 public class CreateLine : MonoBehaviour
 {
     public string editoastUrl = "http://localhost:4000/";
-    public int infraId = 1;
+    public int infraId = 2;
     public float lineSize = 0.03f;
     public float tileSize = 100.0f;
     public int zoomLevel = 10; // As per MVT specs
     public int tileSightDistance = 2;
 
     // Centers the game origin to a place near small infra
-    public int originTileIndexX = 511;
-    public int originTileIndexY = 349;
+    public int originTileIndexX = 527;
+    public int originTileIndexY = 364;
 
     private List<LineRenderer> _lineRenderers = new();
     private HashSet<Tuple<int, int>> _loadedTiles = new();
@@ -104,7 +104,7 @@ public class CreateLine : MonoBehaviour
             if (request.result == UnityWebRequest.Result.Success)
             {
                 byte[] tileData = request.downloadHandler.data;
-                ParseTile(tileData, tileOrigin);
+                ParseTile(tileData, tileOrigin, zoom, x, y);
             }
             else
             {
@@ -114,7 +114,7 @@ public class CreateLine : MonoBehaviour
     }
 
     /** Parse the raw editoast response and create the game object. */
-    void ParseTile(byte[] tileData, Vector2 tileOrigin)
+    void ParseTile(byte[] tileData, Vector2 tileOrigin, int zoom, int x, int y)
     {
         if (tileData != null && tileData.Length > 0)
         {
@@ -141,7 +141,7 @@ public class CreateLine : MonoBehaviour
                 );
             }
         }
-        RenderTileFloor(tileOrigin);
+        RenderTileFloor(tileOrigin, zoom, x, y);
     }
 
     /** Turns a list of points into a game object. Inputs given as unity coordinates. */
@@ -163,17 +163,55 @@ public class CreateLine : MonoBehaviour
     }
 
     /** Renders a large square under loaded area. Mostly used to identify which areas are actually loaded. */
-    private void RenderTileFloor(Vector2 origin)
+    private void RenderTileFloor(Vector2 origin, int zoom, int x, int y)
     {
-        // TODO: get OSM map tiles :)
-        GameObject tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        var origin3d = new Vector3(origin.x + tileSize / 2, -0.2f, origin.y + tileSize / 2);
-        tile.transform.position = origin3d;
-        tile.name = "floor_tile:" + origin.x + "," + origin.y;
+        var name = "floor_tile:" + x + "," + y;
+        Vector3[] vertices = new Vector3[4];
+        var height = -0.2f;
+        vertices[0] = new Vector3(origin.x, height, origin.y + tileSize); // Bottom left
+        vertices[1] = new Vector3(origin.x + tileSize, height, origin.y + tileSize); // Bottom right
+        vertices[2] = new Vector3(origin.x, height, origin.y); // Top left
+        vertices[3] = new Vector3(origin.x + tileSize, height, origin.y); // Top right
 
-        tile.transform.localScale = new Vector3(tileSize, lineSize, tileSize);
-        Material material = new Material(Shader.Find("Unlit/Color"));
-        material.color = Color.grey;
-        tile.GetComponent<Renderer>().material = material;
+        Mesh mesh = new Mesh();
+        mesh.vertices = vertices;
+        mesh.triangles = new[] { 1, 2, 0, 1, 3, 2 };
+
+        Vector3[] normals =
+        {
+            -Vector3.forward,
+            -Vector3.forward,
+            -Vector3.forward,
+            -Vector3.forward,
+        };
+        mesh.normals = normals;
+
+        Vector2[] uv = { new(1, 0), new(0, 0), new(1, 1), new(0, 1) };
+        mesh.uv = uv;
+
+        mesh.RecalculateBounds();
+
+        Material material = new Material(Shader.Find("Unlit/Texture"));
+        var texture = LoadPNG("Assets/img.png");
+        material.mainTexture = texture;
+        GameObject quad = new GameObject(name);
+        MeshFilter meshFilter = quad.AddComponent<MeshFilter>();
+        meshFilter.mesh = mesh;
+        MeshRenderer meshRenderer = quad.AddComponent<MeshRenderer>();
+        meshRenderer.material = material;
+    }
+
+    public static Texture2D LoadPNG(string filePath)
+    {
+        Texture2D tex = null;
+        byte[] fileData;
+
+        if (File.Exists(filePath))
+        {
+            fileData = File.ReadAllBytes(filePath);
+            tex = new Texture2D(300, 300);
+            tex.LoadImage(fileData);
+        }
+        return tex;
     }
 }
