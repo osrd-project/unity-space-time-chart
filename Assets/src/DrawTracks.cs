@@ -16,7 +16,7 @@ public class CreateLine : MonoBehaviour
     public float lineSize = 0.03f;
     public float tileSize = 100.0f;
     public int zoomLevel = 10; // As per MVT specs
-    public int tileSightDistance = 3;
+    public int tileSightDistance = 2;
 
     // Centers the game origin to a place near small infra
     public int originTileIndexX = 511;
@@ -68,7 +68,7 @@ public class CreateLine : MonoBehaviour
     {
         var position = transform.position;
         int x0 = (int)(position.x / tileSize);
-        int y0 = (int)(position.y / tileSize);
+        int y0 = (int)(position.z / tileSize);
 
         for (int distance = 0; distance <= tileSightDistance; distance++)
         {
@@ -104,8 +104,7 @@ public class CreateLine : MonoBehaviour
             if (request.result == UnityWebRequest.Result.Success)
             {
                 byte[] tileData = request.downloadHandler.data;
-                if (tileData != null && tileData.Length > 0)
-                    ParseTile(tileData, tileOrigin);
+                ParseTile(tileData, tileOrigin);
             }
             else
             {
@@ -117,40 +116,64 @@ public class CreateLine : MonoBehaviour
     /** Parse the raw editoast response and create the game object. */
     void ParseTile(byte[] tileData, Vector2 tileOrigin)
     {
-        Stream stream = new MemoryStream(tileData);
-        var layerInfos = VectorTileParser.Parse(stream);
-        var layer = layerInfos.Find(l => l.Name == "track_sections");
-        foreach (var track in layer.VectorTileFeatures)
+        if (tileData != null && tileData.Length > 0)
         {
-            var geometry = track.Geometry[0];
-            var points = new List<Vector3>();
-            foreach (var p in geometry)
+            Stream stream = new MemoryStream(tileData);
+            var layerInfos = VectorTileParser.Parse(stream);
+            var layer = layerInfos.Find(l => l.Name == "track_sections");
+            foreach (var track in layer.VectorTileFeatures)
             {
-                points.Add(
-                    new(
-                        tileOrigin.x + p.X * tileSize / 4096f,
-                        0,
-                        tileOrigin.y + tileSize * (1 - p.Y / 4096f)
-                    )
+                var geometry = track.Geometry[0];
+                var points = new List<Vector3>();
+                foreach (var p in geometry)
+                {
+                    points.Add(
+                        new(
+                            tileOrigin.x + p.X * tileSize / 4096f,
+                            0,
+                            tileOrigin.y + tileSize * (1 - p.Y / 4096f)
+                        )
+                    );
+                }
+                RenderLine(
+                    points,
+                    track.Attributes.Find(entry => entry.Key == "id").Value.ToString()
                 );
             }
-            RenderLine(points);
         }
+        RenderTileFloor(tileOrigin);
     }
 
     /** Turns a list of points into a game object. Inputs given as unity coordinates. */
-    private void RenderLine(List<Vector3> points)
+    private void RenderLine(List<Vector3> points, String name)
     {
         var child = new GameObject();
         var lineRenderer = child.AddComponent<LineRenderer>();
+        lineRenderer.name = name;
         lineRenderer.positionCount = 2;
         lineRenderer.startWidth = lineSize;
         lineRenderer.endWidth = lineSize;
         lineRenderer.useWorldSpace = true;
         lineRenderer.positionCount = points.Count;
         lineRenderer.SetPositions(points.ToArray());
-        Material whiteDiffuseMat = new Material(Shader.Find("Unlit/Texture"));
-        lineRenderer.material = whiteDiffuseMat;
+        Material material = new Material(Shader.Find("Unlit/Color"));
+        material.color = Color.black;
+        lineRenderer.material = material;
         _lineRenderers.Add(lineRenderer);
+    }
+
+    /** Renders a large square under loaded area. Mostly used to identify which areas are actually loaded. */
+    private void RenderTileFloor(Vector2 origin)
+    {
+        // TODO: get OSM map tiles :)
+        GameObject tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        var origin3d = new Vector3(origin.x + tileSize / 2, -0.2f, origin.y + tileSize / 2);
+        tile.transform.position = origin3d;
+        tile.name = "floor_tile:" + origin.x + "," + origin.y;
+
+        tile.transform.localScale = new Vector3(tileSize, lineSize, tileSize);
+        Material material = new Material(Shader.Find("Unlit/Color"));
+        material.color = Color.grey;
+        tile.GetComponent<Renderer>().material = material;
     }
 }
