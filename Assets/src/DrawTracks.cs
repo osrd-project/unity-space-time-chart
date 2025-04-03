@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using JetBrains.Annotations;
 using Mapbox.Vector.Tile;
+using src;
 using UnityEngine;
 using UnityEngine.Networking;
 using Vector2 = UnityEngine.Vector2;
@@ -22,11 +23,21 @@ public class CreateLine : MonoBehaviour
     public int originTileIndexX = 527;
     public int originTileIndexY = 364;
 
+    public bool useMapBackground = true;
+
+    // Cache location for map background (saving API calls)
+    string cacheDirectory = "Assets/TextureCache/";
+
     private List<LineRenderer> _lineRenderers = new();
     private HashSet<Tuple<int, int>> _loadedTiles = new();
 
     void Start()
     {
+        if (!Directory.Exists(cacheDirectory))
+        {
+            Directory.CreateDirectory(cacheDirectory);
+        }
+
         StartCoroutine(LoadTiles());
     }
 
@@ -46,7 +57,7 @@ public class CreateLine : MonoBehaviour
                 var x = nextTileIndex.Item1;
                 var y = nextTileIndex.Item2;
                 _loadedTiles.Add(Tuple.Create(x, y));
-                var origin = new Vector2(tileSize * x, tileSize * y);
+                var origin = new Vector2(tileSize * x, -tileSize * y);
                 StartCoroutine(
                     FetchTile(
                         tileUrl,
@@ -68,7 +79,7 @@ public class CreateLine : MonoBehaviour
     {
         var position = transform.position;
         int x0 = (int)(position.x / tileSize);
-        int y0 = (int)(position.z / tileSize);
+        int y0 = (int)(-position.z / tileSize);
 
         for (int distance = 0; distance <= tileSightDistance; distance++)
         {
@@ -162,7 +173,10 @@ public class CreateLine : MonoBehaviour
         _lineRenderers.Add(lineRenderer);
     }
 
-    /** Renders a large square under loaded area. Mostly used to identify which areas are actually loaded. */
+    /** Renders a large square under loaded area.
+     * If a mapbox key is set, it displays a map of the actual area.
+     * Otherwise, it still keeps track of which area are loaded.
+     */
     private void RenderTileFloor(Vector2 origin, int zoom, int x, int y)
     {
         var name = "floor_tile:" + x + "," + y;
@@ -186,32 +200,66 @@ public class CreateLine : MonoBehaviour
         };
         mesh.normals = normals;
 
-        Vector2[] uv = { new(1, 0), new(0, 0), new(1, 1), new(0, 1) };
+        Vector2[] uv = { new(0, 1), new(1, 1), new(0, 0), new(1, 0) };
         mesh.uv = uv;
 
         mesh.RecalculateBounds();
 
         Material material = new Material(Shader.Find("Unlit/Texture"));
-        var texture = LoadPNG("Assets/img.png");
-        material.mainTexture = texture;
         GameObject quad = new GameObject(name);
         MeshFilter meshFilter = quad.AddComponent<MeshFilter>();
         meshFilter.mesh = mesh;
         MeshRenderer meshRenderer = quad.AddComponent<MeshRenderer>();
         meshRenderer.material = material;
+        if (useMapBackground)
+            StartCoroutine(LoadTexture(zoom, x, y, t => material.mainTexture = t));
     }
 
-    public static Texture2D LoadPNG(string filePath)
+    /** Fetch a map texture for the given tile. */
+    public IEnumerator LoadTexture(int zoom, int x, int y, Action<Texture2D> callback)
     {
-        Texture2D tex = null;
-        byte[] fileData;
+        var keyFile = "mapbox.key";
+        var textureSize = 200;
+        Texture2D texture = new Texture2D(textureSize, textureSize);
+        var coordinates = MvtToLatLon.MvtToLatLonBounds(zoom, x, y);
+        string fileName = Path.GetFileName($"{zoom}-{x}-{y}.png");
+        string cachePath = Path.Combine(cacheDirectory, fileName);
 
-        if (File.Exists(filePath))
+        if (File.Exists(cachePath))
         {
-            fileData = File.ReadAllBytes(filePath);
-            tex = new Texture2D(300, 300);
-            tex.LoadImage(fileData);
+            byte[] fileData = File.ReadAllBytes(cachePath);
+            texture.LoadImage(fileData);
+            callback(texture);
         }
-        return tex;
+        else if (File.Exists(keyFile))
+        {
+            var apiKey = File.ReadAllText(keyFile);
+            var template =
+                "https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/[{0},{1},{2},{3}]/{4}x{4}?access_token={5}";
+            var url = String.Format(
+                template,
+                coordinates.lonLeft,
+                coordinates.latTop,
+                coordinates.lonRight,
+                coordinates.latBottom,
+                textureSize,
+                apiKey
+            );
+            using (UnityWebRequest request = UnityWebRequest.Get(url))
+            {
+                yield return request.SendWebRequest();
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    byte[] tileData = request.downloadHandler.data;
+                    texture.LoadImage(tileData);
+                    File.WriteAllBytes(cachePath, tileData);
+                    callback(texture);
+                }
+                else
+                {
+                    Debug.LogError("Failed to fetch tile image: " + request.error);
+                }
+            }
+        }
     }
 }
