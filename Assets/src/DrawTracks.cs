@@ -1,9 +1,6 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Numerics;
 using Mapbox.Vector.Tile;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -14,6 +11,7 @@ public class CreateLine : MonoBehaviour
 {
     public string editoastUrl = "http://localhost:4000/";
     public int infraId = 1;
+    public float lineSize = 0.03f;
 
     private List<LineRenderer> _lineRenderers = new();
 
@@ -100,8 +98,8 @@ public class CreateLine : MonoBehaviour
             var child = new GameObject();
             var lineRenderer = child.AddComponent<LineRenderer>();
             lineRenderer.positionCount = 2;
-            lineRenderer.startWidth = 0.02f;
-            lineRenderer.endWidth = 0.02f;
+            lineRenderer.startWidth = lineSize;
+            lineRenderer.endWidth = lineSize;
             lineRenderer.useWorldSpace = true;
             lineRenderer.positionCount = points.Count;
             lineRenderer.SetPositions(points.ToArray());
