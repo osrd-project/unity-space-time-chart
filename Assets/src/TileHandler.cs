@@ -38,7 +38,7 @@ namespace src
         private void RenderTileFloor(Vector2 origin, int zoom, int x, int y)
         {
             Vector3[] vertices = new Vector3[4];
-            var height = -0.2f;
+            var height = -0.1f;
             vertices[0] = new Vector3(origin.x, height, origin.y + _tileSize); // Bottom left
             vertices[1] = new Vector3(origin.x + _tileSize, height, origin.y + _tileSize); // Bottom right
             vertices[2] = new Vector3(origin.x, height, origin.y); // Top left

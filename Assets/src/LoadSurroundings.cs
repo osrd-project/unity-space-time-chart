@@ -13,14 +13,14 @@ namespace src
     {
         public string editoastUrl = "http://localhost:4000/";
         public int infraId = 2;
-        public float lineSize = 0.03f;
-        public float tileSize = 100.0f;
-        public int zoomLevel = 10; // As per MVT specs
-        public int tileSightDistance = 2;
+        public float lineSize = 0.001f;
+        public float tileSize = 15.0f;
+        public int zoomLevel = 11; // As per MVT specs
+        public int tileSightDistance = 3;
 
         // Centers the game origin to a place near small infra
-        public int originTileIndexX = 527;
-        public int originTileIndexY = 364;
+        public int originTileIndexX = 1053;
+        public int originTileIndexY = 730;
 
         public bool useMapBackground = true;
 

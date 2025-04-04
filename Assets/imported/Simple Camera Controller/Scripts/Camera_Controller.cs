@@ -3,11 +3,11 @@ using UnityEngine;
 
 public class Camera_Controller : MonoBehaviour
 {
-    public float Normal_Speed = 25.0f; //Normal movement speed
+    public float Normal_Speed = 20.0f; //Normal movement speed
 
-    public float Shift_Speed = 54.0f; //multiplies movement speed by how long shift is held down.
+    public float Shift_Speed = 50.0f; //multiplies movement speed by how long shift is held down.
 
-    public float Speed_Cap = 54.0f; //Max cap for speed when shift is held down
+    public float Speed_Cap = 50.0f; //Max cap for speed when shift is held down
 
     public float Camera_Sensitivity = 0.6f; //How sensitive it with mouse
 

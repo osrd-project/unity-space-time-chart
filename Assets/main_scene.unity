@@ -179,7 +179,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.01
   far clip plane: 1000
   field of view: 60
   orthographic: 0
@@ -272,12 +272,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   editoastUrl: http://localhost:4000/
   infraId: 2
-  lineSize: 0.03
-  tileSize: 100
-  zoomLevel: 10
-  tileSightDistance: 2
-  originTileIndexX: 527
-  originTileIndexY: 364
+  lineSize: 0.001
+  tileSize: 15
+  zoomLevel: 11
+  tileSightDistance: 3
+  originTileIndexX: 1053
+  originTileIndexY: 730
   useMapBackground: 1
 --- !u!114 &1039590194
 MonoBehaviour:
@@ -291,9 +291,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 42dd1a894d85db548a183bdc6a398828, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Normal_Speed: 25
-  Shift_Speed: 54
-  Speed_Cap: 54
+  Normal_Speed: 20
+  Shift_Speed: 50
+  Speed_Cap: 50
   Camera_Sensitivity: 0.6
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
