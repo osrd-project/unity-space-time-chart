@@ -59,7 +59,6 @@ namespace src
             var geometry = pathPropsResponse.geometry;
 
             var result = new List<Vector2>();
-            var result3d = new List<Vector3>();
             foreach (var geometryPoint in geometry.coordinates)
             {
                 float lon = geometryPoint[0];
@@ -68,26 +67,74 @@ namespace src
                 var tileX = (float)(mvtIndex.tileX - _originTileIndexX);
                 var tileY = (float)(mvtIndex.tileY - _originTileIndexY - 1);
                 result.Add(new(tileX * _tileSize, -tileY * _tileSize));
-                result3d.Add(new(tileX * _tileSize, 0f, -tileY * _tileSize));
             }
 
-            RenderLine(result3d);
+            Render(result, 1f, 2f);
         }
 
-        /** Turns a list of points into a game object. Inputs given as unity coordinates. */
-        private void RenderLine(List<Vector3> points)
+        private void Render(List<Vector2> points, float minHeight, float maxHeight)
         {
-            var lineRenderer = gameObject.AddComponent<LineRenderer>();
-            lineRenderer.name = name;
-            lineRenderer.positionCount = 2;
-            lineRenderer.startWidth = 0.1f;
-            lineRenderer.endWidth = 0.1f;
-            lineRenderer.useWorldSpace = true;
-            lineRenderer.positionCount = points.Count;
-            lineRenderer.SetPositions(points.ToArray());
-            Material material = new Material(Shader.Find("Unlit/Color"));
-            material.color = Color.black;
-            lineRenderer.material = material;
+            MeshFilter meshFilter = gameObject.AddComponent<MeshFilter>();
+            MeshRenderer meshRenderer = gameObject.AddComponent<MeshRenderer>();
+
+            Mesh mesh = new Mesh();
+
+            int vertexCount = points.Count * 2;
+            Vector3[] vertices = new Vector3[vertexCount];
+            Vector2[] uvs = new Vector2[vertexCount];
+            int[] triangles = new int[(points.Count - 1) * 12];
+
+            for (int i = 0; i < points.Count; i++)
+            {
+                // Bottom vertices
+                vertices[i * 2] = new Vector3(points[i].x, minHeight, points[i].y);
+                // Top vertices
+                vertices[i * 2 + 1] = new Vector3(points[i].x, maxHeight, points[i].y);
+
+                uvs[i * 2] = new Vector2(0, 0);
+                uvs[i * 2 + 1] = new Vector2(0, 1);
+            }
+
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                int index = i * 6;
+                int vertIndex = i * 2;
+
+                triangles[index] = vertIndex;
+                triangles[index + 1] = vertIndex + 1;
+                triangles[index + 2] = vertIndex + 2;
+
+                triangles[index + 3] = vertIndex + 2;
+                triangles[index + 4] = vertIndex + 1;
+                triangles[index + 5] = vertIndex + 3;
+            }
+
+            // Double the triangles the other way around,
+            // to make the mesh visible from either side
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                int index = triangles.Length / 2 + i * 6;
+                int vertIndex = i * 2;
+
+                triangles[index] = vertIndex + 2;
+                triangles[index + 1] = vertIndex + 1;
+                triangles[index + 2] = vertIndex;
+
+                triangles[index + 3] = vertIndex + 3;
+                triangles[index + 4] = vertIndex + 1;
+                triangles[index + 5] = vertIndex + 2;
+            }
+
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+
+            meshFilter.mesh = mesh;
+
+            Material material = new Material(Shader.Find("UI/Unlit/Transparent"));
+            material.color = new Color(1, 0, 0, 0.2f);
+            meshRenderer.material = material;
         }
     }
 }
