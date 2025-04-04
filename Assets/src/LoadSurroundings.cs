@@ -13,6 +13,7 @@ namespace src
     {
         public string editoastUrl = "http://localhost:4000/";
         public int infraId = 2;
+        public int timetableId = 2;
         public float lineSize = 0.001f;
         public float tileSize = 15.0f;
         public int zoomLevel = 11; // As per MVT specs
@@ -35,7 +36,15 @@ namespace src
             {
                 Directory.CreateDirectory(cacheDirectory);
             }
-
+            TrainLoader.CreateTrainLoader(
+                timetableId,
+                infraId,
+                editoastUrl,
+                tileSize,
+                zoomLevel,
+                originTileIndexX,
+                originTileIndexY
+            );
             StartCoroutine(LoadTiles());
         }
 

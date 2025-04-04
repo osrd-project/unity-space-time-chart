@@ -77,7 +77,7 @@ namespace src
             var keyFile = "mapbox.key";
             var textureSize = 200;
             Texture2D texture = new Texture2D(textureSize, textureSize);
-            var coordinates = MvtToLatLon.MvtToLatLonBounds(zoom, x, y);
+            var coordinates = Helpers.MvtToLatLonBounds(zoom, x, y);
             string fileName = Path.GetFileName($"{zoom}-{x}-{y}.png");
             string cachePath = Path.Combine(cacheDirectory, fileName);
 
