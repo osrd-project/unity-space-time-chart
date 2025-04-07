@@ -1,7 +1,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Threading;
 using JetBrains.Annotations;
 using src;
 using UnityEngine;
@@ -32,6 +34,9 @@ namespace src
 
         void Start()
         {
+            // Forces floats to be formatted as `1.23` and not `1,23` on French windows,
+            // as it would mess with the API calls. (seriously what the hell)
+            Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-GB");
             if (!Directory.Exists(cacheDirectory))
             {
                 Directory.CreateDirectory(cacheDirectory);

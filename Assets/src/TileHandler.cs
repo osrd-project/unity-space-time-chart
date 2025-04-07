@@ -113,7 +113,9 @@ namespace src
                     }
                     else
                     {
-                        Debug.LogError("Failed to fetch tile image: " + request.error);
+                        Debug.LogError(
+                            "Failed to fetch tile image: at " + url + ": " + request.error
+                        );
                     }
                 }
             }
