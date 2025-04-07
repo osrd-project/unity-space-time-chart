@@ -1,8 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using UnityEngine;
 
 namespace src
@@ -19,6 +17,9 @@ namespace src
         private List<Vector2> _geoPoints;
         private PathData? _pathData;
         private List<OccupancyBlock> _occupancyBlocks;
+
+        private DateTime _timeOrigin = DateTime.Parse("04/07/2025 08:45:18"); // TODO
+        private float _scaleSecondsPerMeter = 200f; // Vertical scale
 
         private struct PathData
         {
@@ -98,15 +99,8 @@ namespace src
         private void RenderOccupancy(OccupancyBlock block)
         {
             var points = Helpers.SliceLine(_geoPoints, block.StartOffset, block.EndOffset);
-            var start = block.StartTime / 100f;
-            var end = block.EndTime / 100f;
-
-            var builder = new StringBuilder();
-            builder.Append("Rendering, points = ");
-            foreach (var point in points)
-                builder.Append($"({point.x},{point.y}) ");
-            builder.Append($"; start={start:F2}, end={end:F2}");
-            Debug.Log(builder.ToString());
+            var start = block.StartTime / _scaleSecondsPerMeter;
+            var end = block.EndTime / _scaleSecondsPerMeter;
 
             Render(points, start, end, block.Color);
         }
@@ -127,15 +121,19 @@ namespace src
             yield return Helpers.PostJson(projectPathUrl, inputPayload, callback);
 
             dynamic trainResponse = projectionResponse[_id.ToString()];
+            string rawDeparture = trainResponse.departure_time;
+            var departureTimeDelta = DateTime.Parse(rawDeparture) - _timeOrigin;
             _occupancyBlocks = new List<OccupancyBlock>();
             foreach (var signalUpdate in trainResponse.signal_updates)
-                _occupancyBlocks.Add(ParseSignalUpdate(signalUpdate));
+                _occupancyBlocks.Add(
+                    ParseSignalUpdate(signalUpdate, departureTimeDelta.TotalMilliseconds)
+                );
         }
 
-        private OccupancyBlock ParseSignalUpdate(dynamic signalUpdate)
+        private OccupancyBlock ParseSignalUpdate(dynamic signalUpdate, double departureTimeDelta)
         {
-            int timeStart = signalUpdate.time_start;
-            int timeEnd = signalUpdate.time_end;
+            int timeStart = signalUpdate.time_start + departureTimeDelta;
+            int timeEnd = signalUpdate.time_end + departureTimeDelta;
             int positionStart = signalUpdate.position_start;
             int positionEnd = signalUpdate.position_end;
             int color = signalUpdate.color;
