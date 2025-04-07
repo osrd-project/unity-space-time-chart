@@ -87,7 +87,7 @@ namespace src
                 texture.LoadImage(fileData);
                 callback(texture);
             }
-            else if (File.Exists(keyFile))
+            else if (File.Exists(keyFile) && !File.ReadAllText(keyFile).Contains("API key"))
             {
                 var apiKey = File.ReadAllText(keyFile);
                 var template =

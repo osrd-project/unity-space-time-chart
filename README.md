@@ -11,6 +11,13 @@ Requirements:
 
 Import the project in unity and run.
 
+## Map background
+
+Tiles are fetches as png from [mapbox](https://www.mapbox.com/) and then displayed as textures.
+
+For the tiles to be loaded, a mapbox token needs to be set in mapbox.key.
+Otherwise the tiles would just be blank, they still keep track of which areas have been loaded.
+
 ## Linter
 
 I use a CSharpier plugin in my IDE. There's no CI check for now, but running the linter at each commit would be appreciated.
