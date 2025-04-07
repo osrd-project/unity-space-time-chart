@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
-using Object = System.Object;
 
 namespace src
 {
@@ -88,6 +88,53 @@ namespace src
                     Debug.LogError("request failed for " + url + ": " + request.error);
                 }
             }
+        }
+
+        /** Slices the given line to the given range. Inputs are in [0, 1]. */
+        public static List<Vector2> SliceLine(
+            List<Vector2> line,
+            float relativeFrom,
+            float relativeTo
+        )
+        {
+            var length = 0f;
+            for (int i = 0; i < line.Count - 1; i++)
+            {
+                length += (line[i] - line[i + 1]).magnitude;
+            }
+
+            var result = new List<Vector2>();
+
+            var from = relativeFrom * length;
+            var to = relativeTo * length;
+
+            var distanceToRemoveAtStart = from;
+            var distanceToEnd = to;
+            for (int i = 0; i < line.Count - 1; i++)
+            {
+                var segment = line[i] - line[i + 1];
+                var segmentLength = segment.magnitude;
+                if (distanceToRemoveAtStart <= 0f)
+                    result.Add(line[i]);
+                else if (distanceToRemoveAtStart < segmentLength)
+                    result.Add(line[i] + segment * (distanceToRemoveAtStart / segmentLength));
+
+                if (distanceToEnd <= segmentLength)
+                {
+                    result.Add(line[i] + segment * (distanceToEnd / segmentLength));
+                    break;
+                }
+                distanceToRemoveAtStart -= segmentLength;
+                distanceToEnd -= segmentLength;
+            }
+
+            var resultNoDuplicate = new List<Vector2>();
+            resultNoDuplicate.Add(result[0]);
+            for (var i = 1; i < result.Count - 1; i++)
+                if ((resultNoDuplicate.Last() - result[i]).magnitude > 0.1)
+                    resultNoDuplicate.Add(result[i]);
+
+            return resultNoDuplicate;
         }
 
         private static double ToRadians(double degrees)

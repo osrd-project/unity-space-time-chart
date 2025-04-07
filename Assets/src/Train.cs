@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using UnityEngine;
 
 namespace src
@@ -15,6 +17,48 @@ namespace src
         private int _originTileIndexY;
         private float _tileSize;
         private List<Vector2> _geoPoints;
+        private PathData? _pathData;
+        private List<OccupancyBlock> _occupancyBlocks;
+
+        private struct PathData
+        {
+            public dynamic TrackSections;
+            public dynamic Blocks;
+            public dynamic Routes;
+            public int Length;
+
+            public PathData(dynamic trackSections, dynamic blocks, dynamic routes, int length)
+            {
+                TrackSections = trackSections;
+                Blocks = blocks;
+                Routes = routes;
+                Length = length;
+            }
+        }
+
+        private struct OccupancyBlock
+        {
+            public float StartTime;
+            public float EndTime;
+            public float StartOffset;
+            public float EndOffset;
+            public Color Color;
+
+            public OccupancyBlock(
+                float startTime,
+                float endTime,
+                float startOffset,
+                float endOffset,
+                Color color
+            )
+            {
+                StartTime = startTime;
+                EndTime = endTime;
+                StartOffset = startOffset;
+                EndOffset = endOffset;
+                Color = color;
+            }
+        }
 
         public static Train CreateTrain(
             GameObject parent,
@@ -37,45 +81,129 @@ namespace src
             train._originTileIndexX = originTileIndexX;
             train._originTileIndexY = originTileIndexY;
             train._tileSize = tileSize;
-            train.StartCoroutine(train.GetGeoPoints());
+            train.StartCoroutine(train.Run());
             return train;
+        }
+
+        private IEnumerator Run()
+        {
+            yield return GetGeoPoints();
+            yield return GetSpaceTimeData();
+            foreach (var block in _occupancyBlocks)
+            {
+                RenderOccupancy(block);
+            }
+        }
+
+        private void RenderOccupancy(OccupancyBlock block)
+        {
+            var points = Helpers.SliceLine(_geoPoints, block.StartOffset, block.EndOffset);
+            var start = block.StartTime / 100f;
+            var end = block.EndTime / 100f;
+
+            var builder = new StringBuilder();
+            builder.Append("Rendering, points = ");
+            foreach (var point in points)
+                builder.Append($"({point.x},{point.y}) ");
+            builder.Append($"; start={start:F2}, end={end:F2}");
+            Debug.Log(builder.ToString());
+
+            Render(points, start, end, block.Color);
+        }
+
+        private IEnumerator GetSpaceTimeData()
+        {
+            yield return LoadPathData();
+            var projectPathUrl = $"{_editoastUrl}api/train_schedule/project_path";
+            dynamic inputPayload = new System.Dynamic.ExpandoObject();
+            inputPayload.ids = new[] { _id };
+            inputPayload.infra_id = _infraId;
+            inputPayload.path = new System.Dynamic.ExpandoObject();
+            inputPayload.path.blocks = _pathData?.Blocks;
+            inputPayload.path.routes = _pathData?.Routes;
+            inputPayload.path.track_section_ranges = _pathData?.TrackSections;
+            dynamic projectionResponse = null;
+            Action<dynamic> callback = result => projectionResponse = result;
+            yield return Helpers.PostJson(projectPathUrl, inputPayload, callback);
+
+            dynamic trainResponse = projectionResponse[_id.ToString()];
+            _occupancyBlocks = new List<OccupancyBlock>();
+            foreach (var signalUpdate in trainResponse.signal_updates)
+                _occupancyBlocks.Add(ParseSignalUpdate(signalUpdate));
+        }
+
+        private OccupancyBlock ParseSignalUpdate(dynamic signalUpdate)
+        {
+            int timeStart = signalUpdate.time_start;
+            int timeEnd = signalUpdate.time_end;
+            int positionStart = signalUpdate.position_start;
+            int positionEnd = signalUpdate.position_end;
+            int color = signalUpdate.color;
+            int r = (color >> 16) & 0xff;
+            int g = (color >> 8) & 0xff;
+            int b = color & 0xff;
+            System.Diagnostics.Debug.Assert(_pathData != null);
+            float pathLength = _pathData.Value.Length;
+            return new OccupancyBlock(
+                timeStart / 1000f,
+                timeEnd / 1000f,
+                positionStart / pathLength,
+                positionEnd / pathLength,
+                new Color(r / 255f, g / 255f, b / 255f)
+            );
+        }
+
+        private IEnumerator LoadPathData()
+        {
+            if (_pathData == null)
+            {
+                dynamic pathResponse = null;
+                var pathUrl = $"{_editoastUrl}api/train_schedule/{_id}/path?infra_id={_infraId}";
+                yield return Helpers.GetJson(pathUrl, result => pathResponse = result);
+                var tracks = pathResponse.track_section_ranges;
+                var blocks = pathResponse.blocks;
+                var routes = pathResponse.routes;
+                int length = pathResponse.length;
+                _pathData = new PathData(tracks, blocks, routes, length);
+            }
         }
 
         private IEnumerator GetGeoPoints()
         {
-            dynamic pathResponse = null;
-            var pathUrl = $"{_editoastUrl}api/train_schedule/{_id}/path?infra_id={_infraId}";
-            yield return Helpers.GetJson(pathUrl, result => pathResponse = result);
-            var tracks = pathResponse.track_section_ranges;
-
-            var pathPropsUrl =
-                $"{_editoastUrl}api/infra/{_infraId}/path_properties?props[]=geometry";
-            dynamic inputPayload = new System.Dynamic.ExpandoObject();
-            inputPayload.track_section_ranges = tracks;
-            dynamic pathPropsResponse = null;
-            Action<dynamic> callback = result => pathPropsResponse = result;
-            yield return Helpers.PostJson(pathPropsUrl, inputPayload, callback);
-
-            var geometry = pathPropsResponse.geometry;
-
-            var result = new List<Vector2>();
-            foreach (var geometryPoint in geometry.coordinates)
+            if (_geoPoints == null)
             {
-                float lon = geometryPoint[0];
-                float lat = geometryPoint[1];
-                var mvtIndex = Helpers.LatLonToMvt(lon, lat, _zoomLevel);
-                var tileX = (float)(mvtIndex.tileX - _originTileIndexX);
-                var tileY = (float)(mvtIndex.tileY - _originTileIndexY - 1);
-                result.Add(new(tileX * _tileSize, -tileY * _tileSize));
-            }
+                yield return LoadPathData();
+                var pathPropsUrl =
+                    $"{_editoastUrl}api/infra/{_infraId}/path_properties?props[]=geometry";
+                dynamic inputPayload = new System.Dynamic.ExpandoObject();
+                inputPayload.track_section_ranges = _pathData?.TrackSections;
+                dynamic pathPropsResponse = null;
+                Action<dynamic> callback = result => pathPropsResponse = result;
+                yield return Helpers.PostJson(pathPropsUrl, inputPayload, callback);
 
-            Render(result, 1f, 2f);
+                var geometry = pathPropsResponse.geometry;
+
+                var result = new List<Vector2>();
+                foreach (var geometryPoint in geometry.coordinates)
+                {
+                    float lon = geometryPoint[0];
+                    float lat = geometryPoint[1];
+                    var mvtIndex = Helpers.LatLonToMvt(lon, lat, _zoomLevel);
+                    var tileX = (float)(mvtIndex.tileX - _originTileIndexX);
+                    var tileY = (float)(mvtIndex.tileY - _originTileIndexY - 1);
+                    result.Add(new(tileX * _tileSize, -tileY * _tileSize));
+                }
+
+                _geoPoints = result;
+            }
         }
 
-        private void Render(List<Vector2> points, float minHeight, float maxHeight)
+        private void Render(List<Vector2> points, float minHeight, float maxHeight, Color color)
         {
-            MeshFilter meshFilter = gameObject.AddComponent<MeshFilter>();
-            MeshRenderer meshRenderer = gameObject.AddComponent<MeshRenderer>();
+            var newGameObject = new GameObject();
+            newGameObject.transform.parent = gameObject.transform;
+            MeshFilter meshFilter = newGameObject.AddComponent<MeshFilter>();
+            MeshRenderer meshRenderer = newGameObject.AddComponent<MeshRenderer>();
 
             Mesh mesh = new Mesh();
 
@@ -133,7 +261,7 @@ namespace src
             meshFilter.mesh = mesh;
 
             Material material = new Material(Shader.Find("UI/Unlit/Transparent"));
-            material.color = new Color(1, 0, 0, 0.2f);
+            material.color = new Color(color.r, color.g, color.b, 0.2f);
             meshRenderer.material = material;
         }
     }
