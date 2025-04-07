@@ -15,6 +15,10 @@ namespace src
         private int _originTileIndexX;
         private int _originTileIndexY;
 
+        private DateTime? _earliestDeparture;
+
+        public float currentVerticalOffset;
+
         public static TrainLoader CreateTrainLoader(
             int timetableId,
             int infraId,
@@ -38,6 +42,24 @@ namespace src
             return trainLoader;
         }
 
+        public void Update()
+        {
+            var scrollSpeed = 3f; // Meters (unity unit) per second pressed
+            if (Input.GetKey(KeyCode.LeftShift))
+                scrollSpeed *= 3f;
+            if (Input.GetKey(KeyCode.LeftControl))
+                scrollSpeed *= 10f;
+
+            if (Input.GetKey(KeyCode.Q))
+            {
+                currentVerticalOffset += Time.deltaTime * scrollSpeed;
+            }
+            if (Input.GetKey(KeyCode.E))
+            {
+                currentVerticalOffset -= Time.deltaTime * scrollSpeed;
+            }
+        }
+
         IEnumerator LoadTrains()
         {
             var trainIds = new List<int>();
@@ -52,7 +74,8 @@ namespace src
                     _zoomLevel,
                     _originTileIndexX,
                     _originTileIndexY,
-                    _tileSize
+                    _tileSize,
+                    _earliestDeparture.Value
                 );
                 yield return new WaitForSeconds(.1f); // Limit editoast requests
             }
@@ -70,6 +93,10 @@ namespace src
                 foreach (var schedule in parsed.results)
                 {
                     int id = schedule.id;
+                    string rawDepartureTime = schedule.start_time;
+                    DateTime departureTime = DateTime.Parse(rawDepartureTime);
+                    if (_earliestDeparture == null || departureTime < _earliestDeparture)
+                        _earliestDeparture = departureTime;
                     res.Add(id);
                 }
                 page = parsed.next;

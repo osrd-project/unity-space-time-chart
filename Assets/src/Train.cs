@@ -17,9 +17,10 @@ namespace src
         private List<Vector2> _geoPoints;
         private PathData? _pathData;
         private List<OccupancyBlock> _occupancyBlocks;
+        private DateTime _timeOrigin;
+        private TrainLoader _trainLoader;
 
-        private DateTime _timeOrigin = DateTime.Parse("04/07/2025 08:45:18"); // TODO
-        private float _scaleSecondsPerMeter = 200f; // Vertical scale
+        private float _scaleSecondsPerMeter = 200f; // Vertical scale, TODO: handle zoom
 
         private struct PathData
         {
@@ -69,7 +70,8 @@ namespace src
             int zoomLevel,
             int originTileIndexX,
             int originTileIndexY,
-            float tileSize
+            float tileSize,
+            DateTime timeOrigin
         )
         {
             GameObject newObj = new GameObject($"train-{trainId}");
@@ -82,8 +84,16 @@ namespace src
             train._originTileIndexX = originTileIndexX;
             train._originTileIndexY = originTileIndexY;
             train._tileSize = tileSize;
+            train._timeOrigin = timeOrigin;
+            train._trainLoader = parent.GetComponent<TrainLoader>();
             train.StartCoroutine(train.Run());
             return train;
+        }
+
+        public void Update()
+        {
+            if (transform.position.y != _trainLoader.currentVerticalOffset)
+                transform.position = new Vector3(0, _trainLoader.currentVerticalOffset, 0);
         }
 
         private IEnumerator Run()
