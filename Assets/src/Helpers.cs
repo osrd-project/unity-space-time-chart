@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using JetBrains.Annotations;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -90,6 +92,14 @@ namespace src
             }
         }
 
+        public static String ListToStr<T>(List<T> list)
+        {
+            var strList = new List<String>();
+            foreach (var x in list)
+                strList.Add(x.ToString());
+            return "[" + String.Join(", ", strList) + "]";
+        }
+
         /** Slices the given line to the given range. Inputs are in [0, 1]. */
         public static List<Vector2> SliceLine(
             List<Vector2> line,
@@ -105,14 +115,11 @@ namespace src
 
             var result = new List<Vector2>();
 
-            var from = relativeFrom * length;
-            var to = relativeTo * length;
-
-            var distanceToRemoveAtStart = from;
-            var distanceToEnd = to;
+            var distanceToRemoveAtStart = relativeFrom * length;
+            var distanceToEnd = relativeTo * length;
             for (int i = 0; i < line.Count - 1; i++)
             {
-                var segment = line[i] - line[i + 1];
+                var segment = line[i + 1] - line[i];
                 var segmentLength = segment.magnitude;
                 if (distanceToRemoveAtStart <= 0f)
                     result.Add(line[i]);
@@ -130,8 +137,8 @@ namespace src
 
             var resultNoDuplicate = new List<Vector2>();
             resultNoDuplicate.Add(result[0]);
-            for (var i = 1; i < result.Count - 1; i++)
-                if ((resultNoDuplicate.Last() - result[i]).magnitude > 0.1)
+            for (var i = 1; i < result.Count; i++)
+                if ((resultNoDuplicate.Last() - result[i]).magnitude >= 0.001)
                     resultNoDuplicate.Add(result[i]);
 
             return resultNoDuplicate;
