@@ -271,15 +271,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   editoastUrl: http://localhost:4000/
-  infraId: 1
-  timetableId: 2
+  infraId: 2
+  timetableId: 35
   lineSize: 0.001
   tileSize: 15
   zoomLevel: 11
-  tileSightDistance: 3
-  originTileIndexX: 1021
-  originTileIndexY: 697
-  useMapBackground: 1
+  tileSightDistance: 2
+  startLat: 45.757812
+  startLon: 4.832011
 --- !u!114 &1039590194
 MonoBehaviour:
   m_ObjectHideFlags: 0

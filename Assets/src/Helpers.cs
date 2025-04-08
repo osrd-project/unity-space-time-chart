@@ -32,6 +32,14 @@ namespace src
             return (lonLeft, lonRight, latTop, latBottom);
         }
 
+        public static (double lat, double lon) MvtToLatLon(int zoom, float x, float y)
+        {
+            int numTiles = 1 << zoom;
+            double lat = ToDegrees(Math.PI - (2 * Math.PI * y) / numTiles);
+            double lon = (x / (double)numTiles) * 360 - 180;
+            return (lat, lon);
+        }
+
         public static (double tileX, double tileY) LonLatToMvt(double lon, double lat, int zoom)
         {
             int numTiles = 1 << zoom;

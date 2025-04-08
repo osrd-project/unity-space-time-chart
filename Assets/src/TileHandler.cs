@@ -101,6 +101,7 @@ namespace src
                     textureSize,
                     apiKey
                 );
+                Debug.Log(url);
                 using (UnityWebRequest request = UnityWebRequest.Get(url))
                 {
                     yield return request.SendWebRequest();

@@ -18,17 +18,18 @@ namespace src
         public float lineSize = 0.001f;
         public float tileSize = 15.0f;
         public int zoomLevel = 11; // As per MVT specs
-        public int tileSightDistance = 3;
+        public int tileSightDistance = 2;
 
         public float startLat = 49.5327827f;
         public float startLon = -0.4015937f;
-
-        public bool useMapBackground = true;
 
         // Cache location for map background (saving API calls)
         string cacheDirectory = "Assets/TextureCache/";
 
         private HashSet<Tuple<int, int>> _loadedTiles = new();
+
+        private TrainLoader _trainLoader;
+        private List<GameObject> _tileObjects = new();
 
         void Start()
         {
@@ -41,8 +42,8 @@ namespace src
             }
 
             var tileOrigin = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);
-
-            TrainLoader.CreateTrainLoader(
+            Debug.Log($"Tile origin: {(int)tileOrigin.tileX}, {(int)tileOrigin.tileY}");
+            _trainLoader = TrainLoader.CreateTrainLoader(
                 timetableId,
                 infraId,
                 editoastUrl,
@@ -51,7 +52,64 @@ namespace src
                 (int)tileOrigin.tileX,
                 (int)tileOrigin.tileY
             );
+
             StartCoroutine(LoadTiles());
+        }
+
+        public void Update()
+        {
+            var zoomIn = Input.GetKeyDown(KeyCode.O);
+            var zoomOut = Input.GetKeyDown(KeyCode.P);
+            if (zoomIn || zoomOut)
+            {
+                int zoomLevelDelta = zoomIn ? 1 : -1;
+                ResetZoom(zoomLevelDelta);
+            }
+        }
+
+        private void ResetZoom(int zoomLevelDelta)
+        {
+            var tileOrigin = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);
+            var (cameraLat, cameraLon) = Helpers.MvtToLatLon(
+                zoomLevel,
+                (int)tileOrigin.tileX + transform.position.x / tileSize,
+                (int)tileOrigin.tileY - transform.position.z / tileSize
+            );
+            startLat = (float)cameraLat;
+            startLon = (float)cameraLon;
+
+            zoomLevel += zoomLevelDelta;
+
+            if (_trainLoader)
+                Destroy(_trainLoader.gameObject);
+            foreach (var tileObject in _tileObjects)
+                Destroy(tileObject);
+            _loadedTiles.Clear();
+
+            var newTileOrigin = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);
+            _trainLoader = TrainLoader.CreateTrainLoader(
+                timetableId,
+                infraId,
+                editoastUrl,
+                tileSize,
+                zoomLevel,
+                (int)newTileOrigin.tileX,
+                (int)newTileOrigin.tileY
+            );
+
+            var newCameraCoordinates = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);
+            transform.position = new Vector3(
+                ((float)newCameraCoordinates.tileX - (int)newTileOrigin.tileX) * tileSize,
+                transform.position.y,
+                ((float)newCameraCoordinates.tileY - (int)newTileOrigin.tileY - 1) * tileSize
+            );
+
+            var (finalCameraLat, finalCameraLon) = Helpers.MvtToLatLon(
+                zoomLevel,
+                (int)tileOrigin.tileX + transform.position.x / tileSize,
+                (int)tileOrigin.tileY - transform.position.z / tileSize
+            );
+            Debug.Log($"from ({cameraLat}, {cameraLon} to {finalCameraLat}, {finalCameraLon})");
         }
 
         /** Infinite loop that keeps loading the most relevant tile, if any. Does not interrupt game engine (unity coroutine). */
@@ -100,6 +158,7 @@ namespace src
                 tileSize,
                 origin
             );
+            _tileObjects.Add(quad);
         }
 
         /** Returns the next best tile coordinates to load, based on the camera position. */
