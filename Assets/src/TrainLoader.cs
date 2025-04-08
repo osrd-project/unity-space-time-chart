@@ -123,8 +123,7 @@ namespace src
                 foreach (var schedule in parsed.results)
                 {
                     int id = schedule.id;
-                    string rawDepartureTime = schedule.start_time;
-                    DateTime departureTime = DateTime.Parse(rawDepartureTime);
+                    DateTime departureTime = schedule["start_time"];
                     if (_earliestDeparture == null || departureTime < _earliestDeparture)
                         _earliestDeparture = departureTime;
                     res.Add(id);

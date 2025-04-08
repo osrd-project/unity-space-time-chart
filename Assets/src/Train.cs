@@ -104,6 +104,11 @@ namespace src
         {
             yield return GetGeoPoints();
             yield return GetSpaceTimeData();
+            if (_occupancyBlocks == null || _geoPoints == null)
+            {
+                Destroy(gameObject);
+                yield break;
+            }
             foreach (var block in _occupancyBlocks)
             {
                 RenderOccupancy(block);
@@ -135,10 +140,12 @@ namespace src
             dynamic projectionResponse = null;
             Action<dynamic> callback = result => projectionResponse = result;
             yield return Helpers.PostJson(projectPathUrl, inputPayload, callback);
+            if (projectionResponse == null)
+                yield break;
 
             dynamic trainResponse = projectionResponse[_id.ToString()];
-            string rawDeparture = trainResponse.departure_time;
-            var departureTimeDelta = DateTime.Parse(rawDeparture) - _timeOrigin;
+            DateTime departure = trainResponse.departure_time;
+            var departureTimeDelta = departure - _timeOrigin;
             _occupancyBlocks = new List<OccupancyBlock>();
             foreach (var signalUpdate in trainResponse.signal_updates)
                 _occupancyBlocks.Add(
@@ -174,6 +181,8 @@ namespace src
                 dynamic pathResponse = null;
                 var pathUrl = $"{_editoastUrl}api/train_schedule/{_id}/path?infra_id={_infraId}";
                 yield return Helpers.GetJson(pathUrl, result => pathResponse = result);
+                if (pathResponse == null)
+                    yield break;
                 var tracks = pathResponse.track_section_ranges;
                 var blocks = pathResponse.blocks;
                 var routes = pathResponse.routes;
@@ -194,6 +203,8 @@ namespace src
                 dynamic pathPropsResponse = null;
                 Action<dynamic> callback = result => pathPropsResponse = result;
                 yield return Helpers.PostJson(pathPropsUrl, inputPayload, callback);
+                if (pathPropsResponse == null)
+                    yield break;
 
                 var geometry = pathPropsResponse.geometry;
 
