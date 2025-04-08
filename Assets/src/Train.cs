@@ -20,7 +20,8 @@ namespace src
         private DateTime _timeOrigin;
         private TrainLoader _trainLoader;
 
-        private float _scaleSecondsPerMeter = 200f; // Vertical scale, TODO: handle zoom
+        private float _scaleSecondsPerMeter;
+        private bool _rendered = false;
 
         private struct PathData
         {
@@ -71,7 +72,8 @@ namespace src
             int originTileIndexX,
             int originTileIndexY,
             float tileSize,
-            DateTime timeOrigin
+            DateTime timeOrigin,
+            float scale
         )
         {
             GameObject newObj = new GameObject($"train-{trainId}");
@@ -86,14 +88,16 @@ namespace src
             train._tileSize = tileSize;
             train._timeOrigin = timeOrigin;
             train._trainLoader = parent.GetComponent<TrainLoader>();
+            train._scaleSecondsPerMeter = scale;
             train.StartCoroutine(train.Run());
             return train;
         }
 
         public void Update()
         {
-            if (transform.position.y != _trainLoader.currentVerticalOffset)
-                transform.position = new Vector3(0, _trainLoader.currentVerticalOffset, 0);
+            if (_rendered)
+                if (transform.position.y != _trainLoader.currentVerticalOffset)
+                    transform.position = new Vector3(0, _trainLoader.currentVerticalOffset, 0);
         }
 
         private IEnumerator Run()
@@ -104,6 +108,8 @@ namespace src
             {
                 RenderOccupancy(block);
             }
+
+            _rendered = true;
         }
 
         private void RenderOccupancy(OccupancyBlock block)

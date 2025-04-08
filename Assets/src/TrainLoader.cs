@@ -16,8 +16,11 @@ namespace src
         private int _originTileIndexY;
 
         private DateTime? _earliestDeparture;
+        private HashSet<int> _allTrainIds = new();
+        private HashSet<int> _renderedTrainIds = new();
 
         public float currentVerticalOffset;
+        public float verticalScale = 200f; // seconds per meter
 
         public static TrainLoader CreateTrainLoader(
             int timetableId,
@@ -58,30 +61,57 @@ namespace src
             {
                 currentVerticalOffset -= Time.deltaTime * scrollSpeed;
             }
+
+            var zoomIn = Input.GetKeyDown(KeyCode.L);
+            var zoomOut = Input.GetKeyDown(KeyCode.Semicolon);
+            if (zoomIn || zoomOut)
+            {
+                var scale = zoomIn ? 0.5f : 2f;
+                currentVerticalOffset /= scale;
+                verticalScale *= scale;
+                foreach (Transform child in transform)
+                {
+                    Destroy(child.gameObject);
+                }
+                _renderedTrainIds.Clear();
+            }
         }
 
         IEnumerator LoadTrains()
         {
-            var trainIds = new List<int>();
-            yield return GetTrainIds(trainIds);
-            foreach (var trainId in trainIds)
+            yield return GetTrainIds(_allTrainIds);
+            while (true)
             {
-                Train.CreateTrain(
-                    gameObject,
-                    _edioastUrl,
-                    trainId,
-                    _infraId,
-                    _zoomLevel,
-                    _originTileIndexX,
-                    _originTileIndexY,
-                    _tileSize,
-                    _earliestDeparture.Value
-                );
-                yield return new WaitForSeconds(.1f); // Limit editoast requests
+                var trainId = PickNonRenderedTrainId();
+                if (trainId is not null)
+                {
+                    Train.CreateTrain(
+                        gameObject,
+                        _edioastUrl,
+                        trainId.Value,
+                        _infraId,
+                        _zoomLevel,
+                        _originTileIndexX,
+                        _originTileIndexY,
+                        _tileSize,
+                        _earliestDeparture.Value,
+                        verticalScale
+                    );
+                    _renderedTrainIds.Add(trainId.Value);
+                }
+                yield return new WaitForSeconds(.1f); // Limit requests
             }
         }
 
-        private IEnumerator GetTrainIds(List<int> res)
+        private int? PickNonRenderedTrainId()
+        {
+            foreach (var train in _allTrainIds)
+                if (!_renderedTrainIds.Contains(train))
+                    return train;
+            return null;
+        }
+
+        private IEnumerator GetTrainIds(HashSet<int> res)
         {
             int? page = 1;
             while (page != null)
