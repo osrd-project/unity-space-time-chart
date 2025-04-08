@@ -20,9 +20,8 @@ namespace src
         public int zoomLevel = 11; // As per MVT specs
         public int tileSightDistance = 3;
 
-        // Centers the game origin to a place near small infra
-        public int originTileIndexX = 1053;
-        public int originTileIndexY = 730;
+        public float startLat = 49.5327827f;
+        public float startLon = -0.4015937f;
 
         public bool useMapBackground = true;
 
@@ -40,14 +39,17 @@ namespace src
             {
                 Directory.CreateDirectory(cacheDirectory);
             }
+
+            var tileOrigin = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);
+
             TrainLoader.CreateTrainLoader(
                 timetableId,
                 infraId,
                 editoastUrl,
                 tileSize,
                 zoomLevel,
-                originTileIndexX,
-                originTileIndexY
+                (int)tileOrigin.tileX,
+                (int)tileOrigin.tileY
             );
             StartCoroutine(LoadTiles());
         }
@@ -65,11 +67,17 @@ namespace src
                 var nextTileIndex = FindNextTile();
                 if (nextTileIndex != null)
                 {
+                    var tileOrigin = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);
                     var x = nextTileIndex.Item1;
                     var y = nextTileIndex.Item2;
                     _loadedTiles.Add(Tuple.Create(x, y));
                     var origin = new Vector2(tileSize * x, -tileSize * y);
-                    createTile(tileUrl, originTileIndexX + x, originTileIndexY + y, origin);
+                    createTile(
+                        tileUrl,
+                        (int)tileOrigin.tileX + x,
+                        (int)tileOrigin.tileY + y,
+                        origin
+                    );
                 }
 
                 yield return new WaitForSeconds(.1f); // Limit editoast requests to 10/s

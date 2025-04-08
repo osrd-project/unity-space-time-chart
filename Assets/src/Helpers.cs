@@ -32,7 +32,7 @@ namespace src
             return (lonLeft, lonRight, latTop, latBottom);
         }
 
-        public static (double tileX, double tileY) LatLonToMvt(double lon, double lat, int zoom)
+        public static (double tileX, double tileY) LonLatToMvt(double lon, double lat, int zoom)
         {
             int numTiles = 1 << zoom;
 

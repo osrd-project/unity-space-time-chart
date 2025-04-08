@@ -196,7 +196,7 @@ namespace src
                 {
                     float lon = geometryPoint[0];
                     float lat = geometryPoint[1];
-                    var mvtIndex = Helpers.LatLonToMvt(lon, lat, _zoomLevel);
+                    var mvtIndex = Helpers.LonLatToMvt(lon, lat, _zoomLevel);
                     var tileX = (float)(mvtIndex.tileX - _originTileIndexX);
                     var tileY = (float)(mvtIndex.tileY - _originTileIndexY - 1);
                     result.Add(new(tileX * _tileSize, -tileY * _tileSize));
