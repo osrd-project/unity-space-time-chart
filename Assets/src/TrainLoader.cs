@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace src
@@ -15,12 +16,13 @@ namespace src
         private int _originTileIndexX;
         private int _originTileIndexY;
 
-        private DateTime? _earliestDeparture;
         private HashSet<int> _allTrainIds = new();
+        private Dictionary<int, DateTime> _departureTimes = new();
         private HashSet<int> _renderedTrainIds = new();
 
         public float currentVerticalOffset;
         public float verticalScale = 200f; // seconds per meter
+        public Camera mainCamera;
 
         public static TrainLoader CreateTrainLoader(
             int timetableId,
@@ -34,6 +36,7 @@ namespace src
         {
             var obj = new GameObject("TrainLoader");
             var trainLoader = obj.AddComponent<TrainLoader>();
+            trainLoader.mainCamera = Camera.main;
             trainLoader._timetableId = timetableId;
             trainLoader._infraId = infraId;
             trainLoader._edioastUrl = edioastUrl;
@@ -80,9 +83,11 @@ namespace src
         IEnumerator LoadTrains()
         {
             yield return GetTrainIds(_allTrainIds);
+            var sortedTrainIds = _allTrainIds.ToList();
+            sortedTrainIds.Sort((a, b) => _departureTimes[a].CompareTo(_departureTimes[b]));
             while (true)
             {
-                var trainId = PickNonRenderedTrainId();
+                var trainId = PickNonRenderedTrainId(sortedTrainIds);
                 if (trainId is not null)
                 {
                     Train.CreateTrain(
@@ -94,7 +99,7 @@ namespace src
                         _originTileIndexX,
                         _originTileIndexY,
                         _tileSize,
-                        _earliestDeparture.Value,
+                        _departureTimes[sortedTrainIds[0]],
                         verticalScale
                     );
                     _renderedTrainIds.Add(trainId.Value);
@@ -103,9 +108,9 @@ namespace src
             }
         }
 
-        private int? PickNonRenderedTrainId()
+        private int? PickNonRenderedTrainId(List<int> sortedTrainIds)
         {
-            foreach (var train in _allTrainIds)
+            foreach (var train in sortedTrainIds)
                 if (!_renderedTrainIds.Contains(train))
                     return train;
             return null;
@@ -124,9 +129,8 @@ namespace src
                 {
                     int id = schedule.id;
                     DateTime departureTime = schedule["start_time"];
-                    if (_earliestDeparture == null || departureTime < _earliestDeparture)
-                        _earliestDeparture = departureTime;
                     res.Add(id);
+                    _departureTimes[id] = departureTime;
                 }
                 page = parsed.next;
             }

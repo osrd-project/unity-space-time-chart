@@ -103,19 +103,68 @@ namespace src
         private IEnumerator Run()
         {
             yield return GetGeoPoints();
-            yield return GetSpaceTimeData();
-            if (_occupancyBlocks == null || _geoPoints == null)
+            if (_geoPoints == null)
             {
                 Destroy(gameObject);
                 yield break;
             }
+
+            // Avoid moving forward if the train is far away
+            yield return StartCoroutine(WaitForCameraHorizontalDistance(200f));
+
+            yield return GetSpaceTimeData();
+            if (_occupancyBlocks == null || _occupancyBlocks.Count == 0)
+            {
+                Destroy(gameObject);
+                yield break;
+            }
+
+            // Avoid moving forward if the train is too early/late
+            yield return StartCoroutine(WaitForCameraVerticalDistance(50f));
+
             foreach (var block in _occupancyBlocks)
             {
                 RenderOccupancy(block);
-                yield return new WaitForSeconds(0.01f);
+                yield return null;
             }
 
             _rendered = true;
+        }
+
+        public IEnumerator WaitForCameraHorizontalDistance(float minDistance)
+        {
+            var mainCamera = _trainLoader.mainCamera;
+            while (true)
+            {
+                var cameraPosition2D = new Vector2(
+                    mainCamera.transform.position.x,
+                    mainCamera.transform.position.z
+                );
+                foreach (var p in _geoPoints)
+                    if (Vector2.Distance(p, cameraPosition2D) < minDistance)
+                        yield break;
+                yield return new WaitForSeconds(1f);
+            }
+        }
+
+        public IEnumerator WaitForCameraVerticalDistance(float minDistance)
+        {
+            float minHeight = (float)Double.PositiveInfinity;
+            float maxHeight = (float)Double.NegativeInfinity;
+            foreach (var block in _occupancyBlocks)
+            {
+                minHeight = Mathf.Min(minHeight, block.StartTime / _scaleSecondsPerMeter);
+                maxHeight = Mathf.Max(maxHeight, block.EndTime / _scaleSecondsPerMeter);
+            }
+            while (true)
+            {
+                if (
+                    minHeight + _trainLoader.currentVerticalOffset < minDistance
+                    && maxHeight + _trainLoader.currentVerticalOffset > -minDistance
+                )
+                    yield break;
+                yield return new WaitForSeconds(1f);
+            }
         }
 
         private void RenderOccupancy(OccupancyBlock block)
@@ -197,6 +246,8 @@ namespace src
             if (_geoPoints == null)
             {
                 yield return LoadPathData();
+                if (_pathData == null)
+                    yield break;
                 var pathPropsUrl =
                     $"{_editoastUrl}api/infra/{_infraId}/path_properties?props[]=geometry";
                 dynamic inputPayload = new System.Dynamic.ExpandoObject();
