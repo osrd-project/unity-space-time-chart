@@ -219,7 +219,7 @@ namespace src
                     result.Add(new(tileX * _tileSize, -tileY * _tileSize));
                 }
 
-                _geoPoints = result;
+                _geoPoints = DouglasPeucker.Simplify(result, 0.005f * _tileSize);
             }
         }
 

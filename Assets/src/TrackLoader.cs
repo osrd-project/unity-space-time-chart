@@ -69,20 +69,24 @@ namespace src
                 foreach (var track in layer.VectorTileFeatures)
                 {
                     var geometry = track.Geometry[0];
-                    var points = new List<Vector3>();
+                    var points = new List<Vector2>();
                     foreach (var p in geometry)
                     {
                         points.Add(
                             new(
                                 tileOrigin.x + p.X * _tileSize / 4096f,
-                                0,
                                 tileOrigin.y + _tileSize * (1 - p.Y / 4096f)
                             )
                         );
                     }
+
+                    var simplified = DouglasPeucker.Simplify(points, 1e-3f * _tileSize);
+                    var points3d = new List<Vector3>();
+                    foreach (var p in simplified)
+                        points3d.Add(new(p.x, 0f, p.y));
                     Track.CreateTrack(
                         gameObject,
-                        points,
+                        points3d,
                         track.Attributes.Find(entry => entry.Key == "id").Value.ToString(),
                         _lineSize
                     );
