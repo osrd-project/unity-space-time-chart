@@ -112,6 +112,7 @@ namespace src
             foreach (var block in _occupancyBlocks)
             {
                 RenderOccupancy(block);
+                yield return new WaitForSeconds(0.01f);
             }
 
             _rendered = true;
@@ -181,7 +182,7 @@ namespace src
                 dynamic pathResponse = null;
                 var pathUrl = $"{_editoastUrl}api/train_schedule/{_id}/path?infra_id={_infraId}";
                 yield return Helpers.GetJson(pathUrl, result => pathResponse = result);
-                if (pathResponse == null)
+                if (pathResponse == null || pathResponse.length == null)
                     yield break;
                 var tracks = pathResponse.track_section_ranges;
                 var blocks = pathResponse.blocks;
