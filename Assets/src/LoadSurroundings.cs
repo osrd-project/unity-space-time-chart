@@ -12,16 +12,17 @@ namespace src
 {
     public class CreateLine : MonoBehaviour
     {
-        public string editoastUrl = "http://localhost:4000/";
-        public int infraId = 2;
-        public int timetableId = 2;
-        public float lineSize = 0.001f;
         public float tileSize = 15.0f;
-        public int zoomLevel = 11; // As per MVT specs
         public int tileSightDistance = 2;
+        public float lineSize = 0.001f;
 
-        public float startLat = 49.5327827f;
-        public float startLon = -0.4015937f;
+        private string editoastUrl;
+        private int infraId;
+        private int timetableId;
+        private int zoomLevel; // As per MVT specs
+
+        private float startLat;
+        private float startLon;
 
         // Cache location for map background (saving API calls)
         string cacheDirectory = "Assets/TextureCache/";
@@ -33,6 +34,14 @@ namespace src
 
         void Start()
         {
+            var settings = Settings.GetInstance();
+            editoastUrl = settings.editoastUrl;
+            infraId = settings.infraId;
+            timetableId = settings.timetableId;
+            zoomLevel = settings.startZoomLevel;
+            startLat = settings.startLatitude;
+            startLon = settings.startLongitude;
+
             // Forces floats to be formatted as `1.23` and not `1,23` on French windows,
             // as it would mess with the API calls. (seriously what the hell)
             Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-GB");

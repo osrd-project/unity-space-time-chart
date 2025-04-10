@@ -270,15 +270,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ada4356e4a77cefffa8fa20373b07464, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  editoastUrl: http://localhost:4000/
-  infraId: 2
-  timetableId: 35
-  lineSize: 0.001
   tileSize: 15
-  zoomLevel: 11
   tileSightDistance: 2
-  startLat: 45.757812
-  startLon: 4.832011
+  lineSize: 0.001
 --- !u!114 &1039590194
 MonoBehaviour:
   m_ObjectHideFlags: 0

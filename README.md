@@ -14,15 +14,15 @@ Import the project in unity and run.
 
 ## Config
 
-For now the configuration is done in the camera settings in the scene.
+Configuration is made though `Assets/StreamingAssets/config.yaml`.
 
-Most important parameters are infra ID, timetable ID, and lat/lon start location.
+Most important parameters are infra ID, timetable ID, and lat/lon start location. This is also the place to set mapbox API key.
 
 ## Map background
 
 Tiles are fetches as png from [mapbox](https://www.mapbox.com/) and then displayed as textures.
 
-For the tiles to be loaded, a mapbox token needs to be set in mapbox.key.
+For the tiles to be loaded, a mapbox token needs to be set in the config file.
 Otherwise the tiles would just be blank, they still keep track of which areas have been loaded.
 
 ## Controls

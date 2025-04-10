@@ -74,12 +74,12 @@ namespace src
         /** Fetch a map texture for the given tile. */
         public IEnumerator LoadTexture(int zoom, int x, int y, Action<Texture2D> callback)
         {
-            var keyFile = "mapbox.key";
             var textureSize = 200;
             Texture2D texture = new Texture2D(textureSize, textureSize);
             var coordinates = Helpers.MvtToLatLonBounds(zoom, x, y);
             string fileName = Path.GetFileName($"{zoom}-{x}-{y}.png");
             string cachePath = Path.Combine(cacheDirectory, fileName);
+            var apiKey = Settings.GetInstance().mapboxApiKey;
 
             if (File.Exists(cachePath))
             {
@@ -87,9 +87,8 @@ namespace src
                 texture.LoadImage(fileData);
                 callback(texture);
             }
-            else if (File.Exists(keyFile) && !File.ReadAllText(keyFile).Contains("API key"))
+            else if (!apiKey.Contains("API key"))
             {
-                var apiKey = File.ReadAllText(keyFile);
                 var template =
                     "https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/[{0},{1},{2},{3}]/{4}x{4}?access_token={5}";
                 var url = String.Format(
