@@ -22,7 +22,7 @@ namespace src
         {
             if (_instance == null)
             {
-                var configFilePath = Path.Combine(Application.streamingAssetsPath, "config.yaml");
+                var configFilePath = Path.Combine(Directory.GetCurrentDirectory(), "config.yaml");
                 var deserializer = new DeserializerBuilder()
                     .WithNamingConvention(CamelCaseNamingConvention.Instance)
                     .Build();

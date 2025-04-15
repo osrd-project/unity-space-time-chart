@@ -24,9 +24,6 @@ namespace src
         private float startLat;
         private float startLon;
 
-        // Cache location for map background (saving API calls)
-        string cacheDirectory = "Assets/TextureCache/";
-
         private HashSet<Tuple<int, int>> _loadedTiles = new();
 
         private TrainLoader _trainLoader;
@@ -45,9 +42,9 @@ namespace src
             // Forces floats to be formatted as `1.23` and not `1,23` on French windows,
             // as it would mess with the API calls. (seriously what the hell)
             Thread.CurrentThread.CurrentCulture = CultureInfo.CreateSpecificCulture("en-GB");
-            if (!Directory.Exists(cacheDirectory))
+            if (!Directory.Exists(TileHandler.cacheDirectory))
             {
-                Directory.CreateDirectory(cacheDirectory);
+                Directory.CreateDirectory(TileHandler.cacheDirectory);
             }
 
             var tileOrigin = Helpers.LonLatToMvt(startLon, startLat, zoomLevel);

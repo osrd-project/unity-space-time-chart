@@ -11,7 +11,7 @@ namespace src
         public bool useMapBackground = true;
 
         // Cache location for map background (saving API calls)
-        string cacheDirectory = "Assets/TextureCache/";
+        public static string cacheDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TextureCache");
         private float _tileSize;
         private string _tileUrl;
 
