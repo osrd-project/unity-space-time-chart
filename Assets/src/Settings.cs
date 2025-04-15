@@ -14,6 +14,7 @@ namespace src
         public float startLongitude;
         public int startZoomLevel;
         public string mapboxApiKey;
+        public string gatewayCookie;
 
         private static Settings _instance = null;
 

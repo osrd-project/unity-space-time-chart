@@ -44,6 +44,9 @@ namespace src
 
             using (UnityWebRequest request = UnityWebRequest.Get(formattedUrl))
             {
+                var cookie = Settings.GetInstance().gatewayCookie;
+                if (!string.IsNullOrEmpty(cookie))
+                    request.SetRequestHeader("Cookie", string.Format("gateway={0}", cookie));
                 yield return request.SendWebRequest();
 
                 if (request.result == UnityWebRequest.Result.Success)
